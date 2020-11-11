@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html xmlns:th="http:/www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <title>Java学习</title>
+    <link rel="stylesheet" th:href="@{/plugins/amaze/css/amazeui.min.css}">
+    <link rel="stylesheet" th:href="@{/plugins/amaze/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/plugins/contextjs/css/context.standalone.css}">
+    <script type="text/javascript" th:src="@{/plugins/jquery/jquery-2.1.4.min.js}"></script>
+    <script th:src="@{/plugins/amaze/js/amazeui.min.js}"></script>
+    <script th:src="@{/plugins/amaze/js/app.js}"></script>
+    <script th:src="@{/plugins/layer/layer.js}"></script>
+    <script th:src="@{/plugins/laypage/laypage.js}"></script>
+    <script th:src="@{/plugins/contextjs/js/context.js}"></script>
+
+    <link rel="stylesheet" th:href="@{/plugins/amaze/css/amazeui.cropper.css}">
+    <link rel="stylesheet" th:href="@{/plugins/custom/css/custom_up_img.css}">
+    <link rel="stylesheet" th:href="@{/plugins/custom/css/font-awesome.4.6.0.css}">
+    <script th:src="@{/plugins/amaze/js/cropper.min.js}"></script>
+    <script th:src="@{/plugins/custom/js/custom_up_img.js}"></script>
+</head>
+<body>
+<div class="am-cf admin-main">
+
+    <!-- content start -->
+    <div class="admin-content">
+        <div class="" style="width: 100%;float:left;">
+            <!-- 聊天区 -->
+            <div class="am-scrollable-vertical" id="chat-view" style="height: 500px;">
+                <ul class="am-comments-list am-comments-list-flip" id="chat">
+                </ul>
+            </div>
+            <!-- 输入区 -->
+            <div class="am-form-group am-form">
+                <textarea class="" id="message" name="message" rows="5"  placeholder="这里输入你想发送的信息..."></textarea>
+            </div>
+            <!-- 按钮区 -->
+            <div class="am-btn-group am-btn-group-xs" style="float:right;">
+                <button class="am-btn am-btn-default" type="button" onclick="getConnection()"><span class="am-icon-plug"></span> 连接</button>
+                <button class="am-btn am-btn-default" type="button" onclick="closeConnection()"><span class="am-icon-remove"></span> 断开</button>
+                <button class="am-btn am-btn-default" type="button" onclick="checkConnection()"><span class="am-icon-bug"></span> 检查</button>
+                <button class="am-btn am-btn-default" type="button" onclick="clearConsole()"><span class="am-icon-trash-o"></span> 清屏</button>
+                <button class="am-btn am-btn-default" type="button" onclick="sendMessage()"><span class="am-icon-commenting"></span> 发送</button>
+            </div>
+        </div>
+    </div>
+    <!-- content end -->
+</div>
+<script th:inline="javascript">
+    $(function () {
+        context.init({preventDoubleContext: false});
+        context.settings({compress: true});
+        context.attach('#chat-view', [
+            {header: '操作菜单',},
+            {text: '清理', action: clearConsole},
+            {divider: true},
+            {
+                text: '选项', subMenu: [
+                    {header: '连接选项'},
+                    {text: '检查', action: checkConnection},
+                    {text: '连接', action: getConnection},
+                    {text: '断开', action: closeConnection}
+                ]
+            },
+            {
+                text: '销毁菜单', action: function (e) {
+                    e.preventDefault();
+                    context.destroy('#chat-view');
+                }
+            }
+        ]);
+    });
+    if("${message}"){
+        layer.msg('${message}', {
+            offset: 0
+        });
+    }
+    if("${error}"){
+        layer.msg('${error}', {
+            offset: 0,
+            shift: 6
+        });
+    }
+    var wsServer = null;
+    var ws = null;
+    // wsServer = "ws://39.107.122.51:9797/ws";
+    wsServer = "ws://127.0.0.1:9797/ws";
+    ws = new WebSocket(wsServer); //创建WebSocket对象
+    ws.onopen = function (evt) {
+        sendUserName()
+        layer.msg("已经建立连接", { offset: 0});
+    };
+    ws.onmessage = function (evt) {
+        analysisMessage(evt.data);  //解析后台传回的消息,并予以展示
+    };
+    ws.onerror = function (evt) {
+        layer.msg("产生异常", { offset: 0});
+    };
+    ws.onclose = function (evt) {
+        layer.msg("已经关闭连接," + evt.reason, { offset: 0});
+    };
+
+    /**
+     * 连接
+     */
+    function getConnection(){
+        if(ws == null){
+            ws = new WebSocket(wsServer); //创建WebSocket对象
+            ws.onopen = function (evt) {
+                sendUserName();
+                layer.msg("成功建立连接!", { offset: 0});
+            };
+            ws.onmessage = function (evt) {
+                analysisMessage(evt.data);  //解析后台传回的消息,并予以展示
+            };
+            ws.onerror = function (evt) {
+                layer.msg("产生异常", { offset: 0});
+            };
+            ws.onclose = function (evt) {
+                layer.msg("已经关闭连接," + evt.reason, { offset: 0});
+            };
+        }else{
+            layer.msg("连接已存在!", { offset: 0, shift: 6 });
+        }
+    }
+
+    /**
+     * 关闭连接
+     */
+    function closeConnection(){
+        if(ws != null){
+            ws.close();
+            ws = null;
+            $("#list").html("");    //清空在线列表
+            layer.msg("已经关闭连接", { offset: 0});
+        }else{
+            layer.msg("未开启连接", { offset: 0, shift: 6 });
+        }
+    }
+
+    /**
+     * 检查连接
+     */
+    function checkConnection(){
+        if(ws != null){
+            layer.msg(ws.readyState == 0? "连接异常":"连接正常", { offset: 0});
+        }else{
+            layer.msg("连接未开启!", { offset: 0, shift: 6 });
+        }
+    }
+
+    function sendUserName() {
+        ws.send(JSON.stringify({
+                content : '',
+                sender : [[${userid}]],
+                receiver : "",
+                ip:'',
+                city:'',
+                sendTime : getDateFull()
+            }
+        ));
+    }
+
+    $('body').keyup(function(e){
+        if(e.keyCode===13){
+            sendMessage()
+            $("#message").val("");
+        }
+    })
+
+    /**
+     * 发送信息给后台
+     */
+    function sendMessage(){
+        if(ws == null){
+            layer.msg("连接未开启!", { offset: 0, shift: 6 });
+            return;
+        }
+        var message = $("#message").val();
+        var to = $("#sendto").text() == "全体成员"? "": $("#sendToVal").text();
+        if(message == null || message == ""){
+            layer.msg("傻逼玩意儿,你倒是输入内容呀!", { offset: 0, shift: 6 });
+            return;
+        }
+        ws.send(JSON.stringify({
+                content : message,
+                sender : [[${userid}]],                //${userid}
+                receiver : "全体成员",      //接收人,如果没有则置空,如果有多个接收人则用,分隔
+                ip:'',
+                city:'',
+                sendTime : getDateFull()
+            }
+        ));
+    }
+
+    /**
+     *
+     *
+     * {"sender":"服务器端",
+     * "receiver":"全体成员",
+     * "content":"大波牛已下线",
+     * "sendTime":"2020-11-11T10:31:12.299",
+     * "ip":null,
+     * "city":null}
+     */
+
+
+    function analysisMessage(data){
+        data = JSON.parse(data);
+        console.log(data)
+        if(data.type == "message"){      //会话消息
+            showChat(data);
+        }
+        if(data.type == "online"){       //提示消息
+            showNotice(data.content);
+        }
+        /*if(data.list != null && data.list != undefined){      //在线列表
+            showOnline(data.list);
+        }*/
+    }
+
+    /**
+     * 展示提示信息
+     */
+    function showNotice(notice){
+        $("#chat").append("<div><p class=\"am-text-success\" style=\"text-align:center\"><span class=\"am-icon-bell\"></span> "+notice+"</p></div>");
+        var chat = $("#chat-view");
+        chat.scrollTop(chat[0].scrollHeight);   //让聊天区始终滚动到最下面
+    }
+
+    /**
+     * 展示会话信息
+     */
+    function showChat(message){
+        var to = message.receiver == null || message.receiver == ""? "全体成员" : message.receiver;   //获取接收人
+        // var isSef = '${userid}' == message.from.userid ? "am-comment-flip" : "";   //如果是自己则显示在右边,他人信息显示在左边
+        var isSef = [[${userid}]] == message.sender ? "am-comment-flip" : "";   //如果是自己则显示在右边,他人信息显示在左边
+
+        var pic;
+        pic = "";
+        var html = "<li class=\"am-comment "+isSef+" am-comment-primary\"><div class=\"am-comment-main\">\n" +
+                "<header class=\"am-comment-hd\"><div class=\"am-comment-meta\">   <a class=\"am-comment-author\">"+message.sender+"</a>"+message.city + message.ip+"<time> "+message.sendTime+"</time> 发送给: "+to+" </div></header><div class=\"am-comment-bd\"> <p>"+message.content+"</p></div></div></li>";
+        $("#chat").append(html);
+        // $("#message").val("");  //清空输入区
+        var chat = $("#chat-view");
+        chat.scrollTop(chat[0].scrollHeight);   //让聊天区始终滚动到最下面
+
+    }
+
+    /**
+     * 展示在线列表
+     */
+    function showOnline(list){
+        $("#list").html("");    //清空在线列表
+
+        $.each(list, function(index, item){     //添加私聊按钮
+
+            var username = item.nickname + "," + item.userid;
+
+            var li = "<li>"+item.nickname+"</li>";
+            if('${userid}' != item.userid){    //排除自己
+                li = "<li>"+item.nickname+" <button type=\"button\" class=\"am-btn am-btn-xs am-btn-primary am-round\" onclick=\"addChat('"+username+"');\"><span class=\"am-icon-phone\"><span> 私聊</button></li>";
+            }
+            $("#list").append(li);
+        });
+        $("#onlinenum").text($("#list li").length);     //获取在线人数
+    }
+
+    /**
+     * 清空聊天区
+     */
+    function clearConsole(){
+        $("#chat").html("");
+    }
+
+    function appendZero(s){return ("00"+ s).substr((s+"").length);}  //补0函数
+
+    function getDateFull(){
+        var date = new Date();
+        var currentdate = date.getFullYear() + "-" + appendZero(date.getMonth() + 1) + "-" + appendZero(date.getDate()) + " " + appendZero(date.getHours()) + ":" + appendZero(date.getMinutes()) + ":" + appendZero(date.getSeconds());
+        return currentdate;
+    }
+</script>
+</body>
+</html>

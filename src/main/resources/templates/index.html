@@ -181,7 +181,8 @@
         }
         var message = $("#message").val();
         var to = $("#sendto").text() == "全体成员"? "": $("#sendToVal").text();
-        if(message == null || message == ""){
+        //当通过enter发送的时候 enter会输入 "↵"，所以当仅有该信息的时候为空
+        if(message == null || message == ""||message=="↵"){
             layer.msg("傻逼玩意儿,你倒是输入内容呀!", { offset: 0, shift: 6 });
             return;
         }

@@ -43,7 +43,7 @@
                 <button class="am-btn am-btn-default" type="button" onclick="closeConnection()"><span class="am-icon-remove"></span> 断开</button>
                 <button class="am-btn am-btn-default" type="button" onclick="checkConnection()"><span class="am-icon-bug"></span> 检查</button>
                 <button class="am-btn am-btn-default" type="button" onclick="clearConsole()"><span class="am-icon-trash-o"></span> 清屏</button>
-                <button class="am-btn am-btn-default" type="button" onclick="sendMessage()"><span class="am-icon-commenting"></span> 发送</button>
+                <button class="am-btn am-btn-default" type="button" onclick="sendMessageByButton()"><span class="am-icon-commenting"></span> 发送</button>
             </div>
         </div>
     </div>
@@ -166,24 +166,27 @@
 
     $('body').keyup(function(e){
         if(e.keyCode===13){
-            sendMessage()
+            var text = $("#message").val();
+            var message =text.slice(0,-1);
+            sendMessage(message)
             $("#message").val("");
         }
     })
-
+    function sendMessageByButton(message) {
+        var message = $("#message").val();
+        sendMessage(message)
+    }
     /**
      * 发送信息给后台
      */
-    function sendMessage(){
+    function sendMessage(message){
         if(ws == null){
             layer.msg("连接未开启!", { offset: 0, shift: 6 });
             return;
         }
-        var message = $("#message").val();
         var to = $("#sendto").text() == "全体成员"? "": $("#sendToVal").text();
-        //当通过enter发送的时候 enter会输入 "↵"，所以当仅有该信息的时候为空
-        if(message == null || message == ""||message=="↵"){
-            layer.msg("傻逼玩意儿,你倒是输入内容呀!", { offset: 0, shift: 6 });
+        if(message == null || message == ""||message.length==0){
+            layer.msg("傻逼玩意儿,你倒是输入内容呀!", { offset: 0, shift: 2 });
             return;
         }
         ws.send(JSON.stringify({

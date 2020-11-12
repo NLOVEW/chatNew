@@ -86,8 +86,8 @@
     }
     var wsServer = null;
     var ws = null;
-    // wsServer = "ws://39.107.122.51:9797/ws";
-    wsServer = "ws://127.0.0.1:9797/ws";
+    wsServer = "ws://39.107.122.51:9797/ws";
+    //wsServer = "ws://127.0.0.1:9797/ws";
     ws = new WebSocket(wsServer); //创建WebSocket对象
     ws.onopen = function (evt) {
         sendUserName()
@@ -175,6 +175,7 @@
     function sendMessageByButton(message) {
         var message = $("#message").val();
         sendMessage(message)
+        $("#message").val("");
     }
     /**
      * 发送信息给后台
